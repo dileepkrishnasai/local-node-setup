@@ -4,15 +4,53 @@ const path = require('path')
 
 const userRouter = require('./routes/users')
 const productRouter = require('./routes/products')
+const tokenRouter = require('./routes/token')
 
 const app = express()
 
-app.use(bodyParser.urlencoded({extended: false}))
+app.use(express.json({ limit: '50mb' }))
+app.use(bodyParser.urlencoded({ extended: false, limit: '50mb' }))
 app.use(express.static(path.join(__dirname, 'public')))
+
+// Logger middleware - logs all incoming requests
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString()
+  const { method } = req
+  const url = req.originalUrl || req.url
+  const ip = req.ip || req.connection.remoteAddress
+
+  // Log the incoming request
+  console.log(`[${timestamp}] ${method} ${url}`)
+
+  // Log request body if present (for POST, PUT, PATCH requests)
+  if (req.body && Object.keys(req.body).length > 0) {
+    // console.log('  Request Body:', JSON.stringify(req.body))
+  }
+
+  // Log query parameters if present
+  // if (req.query && Object.keys(req.query).length > 0) {
+  //   console.log('  Query Params:', JSON.stringify(req.query))
+  // }
+
+  // Capture the original res.send function
+  const originalSend = res.send
+  const startTime = Date.now()
+
+  // Override res.send to log response
+  res.send = function (data) {
+    const duration = Date.now() - startTime
+    console.log(`[${timestamp}] ${method} ${url} - Status: ${res.statusCode} - Duration: ${duration}ms`)
+
+    // Call the original send function
+    return originalSend.call(this, data)
+  }
+
+  next()
+})
 
 app.use(userRouter)
 app.use(productRouter)
-
+app.use(tokenRouter)
 
 // app.use((req, res, next) => {
 //     var myHeaders = new Headers();
